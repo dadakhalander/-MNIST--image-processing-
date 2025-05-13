@@ -13,9 +13,9 @@ st.set_page_config(page_title="MNIST Digit Classifier", layout="wide")
 @st.cache_resource
 def load_model(model_type):
     if model_type == "ReLU":
-        return tf.keras.models.load_model('models/relu_model.h5')
+        return tf.keras.models.load_model('models/best_relu_model.h5')
     else:
-        return tf.keras.models.load_model('models/tanh_model.h5')
+        return tf.keras.models.load_model('models/best_tanh_model.h5')
 
 # Preprocess image function
 def preprocess_image(image):
