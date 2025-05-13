@@ -1,19 +1,22 @@
 import streamlit as st
 import numpy as np
-import tensorflow as tf
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
 import sys
+import os
 
 # Check and install missing packages
 try:
-    import tensorflow
+    import tensorflow as tf
 except ImportError:
-    st.error("TensorFlow not installed. Please wait while we install dependencies...")
+    st.warning("Installing missing dependencies...")
     import subprocess
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    import tensorflow as tf
     st.rerun()
+
+# Rest of your app code...
 
 # Set page config
 st.set_page_config(page_title="MNIST Digit Classifier", layout="wide")
