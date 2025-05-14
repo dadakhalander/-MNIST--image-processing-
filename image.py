@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
-import cv2
+from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
@@ -20,52 +19,26 @@ def load_model(model_type):
 
 def preprocess_image(image):
     try:
-        # Convert to grayscale
-        img = np.array(image.convert('L'))
-        
-        # Threshold and find contours
-        img = cv2.adaptiveThreshold(
-            img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY_INV, 11, 2
-        )
-        contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        image = image.convert('L')  # Grayscale
+        image = ImageOps.invert(image)  # Invert for black background
+        image = ImageOps.autocontrast(image)
 
-        if contours:
-            largest_contour = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            padding = 10
-            digit = img[max(0, y-padding):min(img.shape[0], y+h+padding),
-                        max(0, x-padding):min(img.shape[1], x+w+padding)]
-        else:
-            digit = img
+        # Resize while keeping aspect ratio, then pad to 28x28
+        image.thumbnail((20, 20), Image.ANTIALIAS)
+        padded = Image.new('L', (28, 28), color=0)
+        upper_left = ((28 - image.width) // 2, (28 - image.height) // 2)
+        padded.paste(image, upper_left)
 
-        # Resize to 20x20 and pad to 28x28
-        h, w = digit.shape
-        scale = 20 / max(h, w)
-        resized = cv2.resize(digit, (int(w*scale), int(h*scale)), interpolation=cv2.INTER_AREA)
-
-        pad_top = (28 - resized.shape[0]) // 2
-        pad_bottom = 28 - resized.shape[0] - pad_top
-        pad_left = (28 - resized.shape[1]) // 2
-        pad_right = 28 - resized.shape[1] - pad_left
-
-        padded = cv2.copyMakeBorder(
-            resized, 
-            pad_top, pad_bottom, 
-            pad_left, pad_right, 
-            cv2.BORDER_CONSTANT, 
-            value=0
-        )
-
-        # Normalize and flatten
-        return (padded.astype('float32') / 255.0).reshape(1, 784), padded
+        # Normalize and reshape
+        img_array = np.array(padded).astype('float32') / 255.0
+        return img_array.reshape(1, 784), padded
     except Exception as e:
         st.error(f"Image processing error: {str(e)}")
         return None, None
 
 def main():
     st.title("Handwritten Digit Classifier")
-    st.write("Upload an image of a handwritten digit (0-9)")
+    st.write("Upload an image of a handwritten digit (0–9)")
 
     model_type = st.sidebar.radio("Model Type:", ("ReLU", "Tanh"))
     uploaded_file = st.file_uploader("Choose image...", type=["jpg", "jpeg", "png"])
