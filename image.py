@@ -70,18 +70,21 @@ def main():
     model_type = st.sidebar.multiselect("Choose Model(s):", ("ReLU", "Tanh", "CNN", "ResNet"))
     uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
-    if uploaded_file:
+    # Ensure that an image is uploaded and at least one model is selected
+    if uploaded_file and model_type:
         try:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", width=150)
 
-            # Process the image for both ReLU and Tanh
+            # Process the image based on the selected models
+            processed_image, processed_vis = None, None
             if "ReLU" in model_type or "Tanh" in model_type:
                 processed_image, processed_vis = preprocess_for_mlp(image)
             elif "CNN" in model_type or "ResNet" in model_type:
                 processed_image, processed_vis = preprocess_for_cnn(image)
 
             if processed_image is None:
+                st.error("Image processing failed.")
                 return
 
             st.image(processed_vis, caption="Processed Image (28x28)", width=150)
@@ -89,6 +92,7 @@ def main():
             # Create a layout for side-by-side predictions
             col1, col2 = st.columns(2)
 
+            # For each model selected, load and display the prediction
             for i, model_name in enumerate(model_type):
                 with (col1 if i == 0 else col2):
                     model = load_model(model_name)
@@ -112,6 +116,8 @@ def main():
 
         except Exception as e:
             st.error(f"Error: {str(e)}")
+    else:
+        st.info("Please upload an image and select at least one model to classify the image.")
 
 if __name__ == "__main__":
     main()
