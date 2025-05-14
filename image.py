@@ -1,79 +1,68 @@
-import streamlit as st
 import numpy as np
-from PIL import Image, ImageOps
-import matplotlib.pyplot as plt
 import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Reshape, Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+)
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import ModelCheckpoint
 
-# Set page config
-st.set_page_config(page_title="MNIST Digit Classifier", layout="wide")
+# Load MNIST data
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-@st.cache_resource
-def load_model(model_type):
-    try:
-        if model_type == "ReLU":
-            return tf.keras.models.load_model('models/best_relu_model.h5')
-        return tf.keras.models.load_model('models/best_tanh_model.h5')
-    except Exception as e:
-        st.error(f"Model loading failed: {str(e)}")
-        return None
+# Normalize pixel values and reshape
+x_train = x_train.astype('float32') / 255.0
+x_test  = x_test.astype('float32') / 255.0
 
-def preprocess_image(image):
-    try:
-        image = image.convert('L')  # Convert to grayscale
-        image = ImageOps.invert(image)  # Invert black/white
-        image = ImageOps.autocontrast(image)
+# Reshape to (28, 28, 1)
+x_train = x_train.reshape(-1, 28, 28, 1)
+x_test  = x_test.reshape(-1, 28, 28, 1)
 
-        # Resize with aspect ratio and pad to 28x28 using new Pillow Resampling
-        image.thumbnail((20, 20), Image.Resampling.LANCZOS)
-        padded = Image.new('L', (28, 28), color=0)
-        upper_left = ((28 - image.width) // 2, (28 - image.height) // 2)
-        padded.paste(image, upper_left)
+# One-hot encode labels
+y_train_cat = to_categorical(y_train, 10)
+y_test_cat  = to_categorical(y_test, 10)
 
-        img_array = np.array(padded).astype('float32') / 255.0
-        return img_array.reshape(1, 784), padded
-    except Exception as e:
-        st.error(f"Image processing error: {str(e)}")
-        return None, None
+# Build CNN model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    MaxPooling2D(pool_size=(2, 2)),
+    
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D(pool_size=(2, 2)),
 
-def main():
-    st.title("Handwritten Digit Classifier")
-    st.write("Upload an image of a handwritten digit (0–9)")
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.3),
+    Dense(10, activation='softmax')
+])
 
-    model_type = st.sidebar.radio("Choose Model:", ("ReLU", "Tanh"))
-    uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
+# Compile model
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer='adam',
+    metrics=['accuracy']
+)
 
-    if uploaded_file:
-        try:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", width=150)
+# Save best model
+checkpoint = ModelCheckpoint(
+    'best_cnn_model.h5',
+    monitor='val_accuracy',
+    save_best_only=True,
+    mode='max',
+    verbose=1
+)
 
-            processed_image, processed_vis = preprocess_image(image)
-            if processed_image is None:
-                return
+# Train model
+model.fit(
+    x_train, y_train_cat,
+    batch_size=64,
+    epochs=10,
+    validation_split=0.1,
+    callbacks=[checkpoint]
+)
 
-            st.image(processed_vis, caption="Processed Image", width=150)
+# Final test accuracy
+test_loss, test_acc = model.evaluate(x_test, y_test_cat, verbose=0)
+print(f"Test Accuracy: {test_acc:.4f}")
 
-            model = load_model(model_type)
-            if model is None:
-                return
-
-            prediction = model.predict(processed_image)
-            pred_digit = np.argmax(prediction)
-            confidence = np.max(prediction)
-
-            st.subheader("Prediction Result")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Predicted Digit", str(pred_digit))
-                st.metric("Confidence", f"{confidence*100:.2f}%")
-            with col2:
-                fig, ax = plt.subplots()
-                ax.bar(range(10), prediction[0])
-                ax.set_xticks(range(10))
-                st.pyplot(fig)
-
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-if __name__ == "__main__":
-    main()
