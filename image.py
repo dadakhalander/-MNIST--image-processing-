@@ -4,26 +4,48 @@ from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-# Set page config
-st.set_page_config(page_title="MNIST Digit Classifier", layout="wide")
+# Page configuration
+st.set_page_config(page_title="MNIST Digit Classifier (MLP + CNN)", layout="wide")
 
+# Load the selected model
 @st.cache_resource
 def load_model(model_type):
     try:
         if model_type == "ReLU":
             return tf.keras.models.load_model('models/best_relu_model.h5')
-        return tf.keras.models.load_model('models/best_tanh_model.h5')
+        elif model_type == "Tanh":
+            return tf.keras.models.load_model('models/best_tanh_model.h5')
+        else:  # CNN
+            return tf.keras.models.load_model('models/best_cnn_model.h5')
     except Exception as e:
         st.error(f"Model loading failed: {str(e)}")
         return None
 
-def preprocess_image(image):
+# Preprocess for CNN
+def preprocess_for_cnn(image):
     try:
-        image = image.convert('L')  # Convert to grayscale
-        image = ImageOps.invert(image)  # Invert black/white
+        image = image.convert('L')
+        image = ImageOps.invert(image)
         image = ImageOps.autocontrast(image)
 
-        # Resize with aspect ratio and pad to 28x28 using new Pillow Resampling
+        image.thumbnail((20, 20), Image.Resampling.LANCZOS)
+        padded = Image.new('L', (28, 28), color=0)
+        upper_left = ((28 - image.width) // 2, (28 - image.height) // 2)
+        padded.paste(image, upper_left)
+
+        img_array = np.array(padded).astype('float32') / 255.0
+        return img_array.reshape(1, 28, 28, 1), padded
+    except Exception as e:
+        st.error(f"Image processing error: {str(e)}")
+        return None, None
+
+# Preprocess for MLP (ReLU or Tanh)
+def preprocess_for_mlp(image):
+    try:
+        image = image.convert('L')
+        image = ImageOps.invert(image)
+        image = ImageOps.autocontrast(image)
+
         image.thumbnail((20, 20), Image.Resampling.LANCZOS)
         padded = Image.new('L', (28, 28), color=0)
         upper_left = ((28 - image.width) // 2, (28 - image.height) // 2)
@@ -35,11 +57,12 @@ def preprocess_image(image):
         st.error(f"Image processing error: {str(e)}")
         return None, None
 
+# Main app function
 def main():
-    st.title("Handwritten Digit Classifier")
-    st.write("Upload an image of a handwritten digit (0–9)")
+    st.title("MNIST Digit Classifier")
+    st.write("Upload a handwritten digit image (0–9) and select a model to classify it.")
 
-    model_type = st.sidebar.radio("Choose Model:", ("ReLU", "Tanh"))
+    model_type = st.sidebar.radio("Choose Model:", ("ReLU", "Tanh", "CNN"))
     uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
     if uploaded_file:
@@ -47,19 +70,23 @@ def main():
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", width=150)
 
-            processed_image, processed_vis = preprocess_image(image)
+            if model_type == "CNN":
+                processed_image, processed_vis = preprocess_for_cnn(image)
+            else:
+                processed_image, processed_vis = preprocess_for_mlp(image)
+
             if processed_image is None:
                 return
 
-            st.image(processed_vis, caption="Processed Image", width=150)
+            st.image(processed_vis, caption="Processed Image (28x28)", width=150)
 
             model = load_model(model_type)
             if model is None:
                 return
 
             prediction = model.predict(processed_image)
-            pred_digit = np.argmax(prediction)
-            confidence = np.max(prediction)
+            pred_digit = int(np.argmax(prediction))
+            confidence = float(np.max(prediction))
 
             st.subheader("Prediction Result")
             col1, col2 = st.columns(2)
@@ -70,6 +97,8 @@ def main():
                 fig, ax = plt.subplots()
                 ax.bar(range(10), prediction[0])
                 ax.set_xticks(range(10))
+                ax.set_xlabel("Digit")
+                ax.set_ylabel("Probability")
                 st.pyplot(fig)
 
         except Exception as e:
