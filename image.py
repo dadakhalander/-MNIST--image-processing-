@@ -8,22 +8,7 @@ import os
 # Page configuration
 st.set_page_config(page_title="MNIST Digit Classifier (MLP + CNN)", layout="wide")
 
-# Model information
-MODEL_INFO = {
-    "ReLU": {
-        "description": "Multi-Layer Perceptron with ReLU activation",
-        "architecture": "784 input → 256 hidden (ReLU) → 128 hidden (ReLU) → 10 output (Softmax)"
-    },
-    "Tanh": {
-        "description": "Multi-Layer Perceptron with Hyperbolic Tangent (tanh) activation",
-        "architecture": "784 input → 256 hidden (tanh) → 128 hidden (tanh) → 10 output (Softmax)",
-        "note": "tanh (Hyperbolic Tangent) maps inputs to [-1,1], helping model complex patterns"
-    },
-    "CNN": {
-        "description": "Convolutional Neural Network",
-        "architecture": "Conv2D(32,3x3) → MaxPool → Conv2D(64,3x3) → MaxPool → Dense(128) → Dense(10, Softmax)"
-    }
-}
+
 
 # Load the selected model
 @st.cache_resource
