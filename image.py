@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 # Page configuration
-st.set_page_config(page_title="MNIST Digit Classifier (MLP + CNN)", layout="wide")
+st.set_page_config(page_title="MNIST Digit Classifier (MLP + CNN + ResNet)", layout="wide")
 
 # Load the selected model
 @st.cache_resource
@@ -15,8 +15,13 @@ def load_model(model_type):
             return tf.keras.models.load_model('models/best_relu_model.h5')
         elif model_type == "Tanh":
             return tf.keras.models.load_model('models/best_tanh_model.h5')
-        else:  # CNN
+        elif model_type == "CNN":
             return tf.keras.models.load_model('models/best_cnn_model.h5')
+        elif model_type == "ResNet":
+            return tf.keras.models.load_model('models/resnet_mnist_model.h5')
+        else:
+            st.error("Unknown model type.")
+            return None
     except Exception as e:
         st.error(f"Model loading failed: {str(e)}")
         return None
@@ -62,7 +67,7 @@ def main():
     st.title("MNIST Digit Classifier")
     st.write("Upload a handwritten digit image (0–9) and select a model to classify it.")
 
-    model_type = st.sidebar.radio("Choose Model:", ("ReLU", "Tanh", "CNN"))
+    model_type = st.sidebar.radio("Choose Model:", ("ReLU", "Tanh", "CNN", "ResNet"))
     uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
     if uploaded_file:
@@ -70,7 +75,7 @@ def main():
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", width=150)
 
-            if model_type == "CNN":
+            if model_type == "CNN" or model_type == "ResNet":
                 processed_image, processed_vis = preprocess_for_cnn(image)
             else:
                 processed_image, processed_vis = preprocess_for_mlp(image)
