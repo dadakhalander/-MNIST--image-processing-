@@ -67,11 +67,13 @@ def main():
     st.title("MNIST Digit Classifier")
     st.write("Upload a handwritten digit image (0–9) and select a model to classify it.")
 
-    model_type = st.sidebar.multiselect("Choose Model(s):", ("ReLU", "Tanh", "CNN", "ResNet"))
+    # Show ReLU and Tanh together, and CNN/ResNet as toggleable options
+    model_type = st.sidebar.multiselect("Choose Model(s):", ("ReLU", "Tanh"))
+    additional_model_type = st.sidebar.selectbox("Or choose CNN/ResNet model:", ("None", "CNN", "ResNet"))
     uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
     # Ensure that an image is uploaded and at least one model is selected
-    if uploaded_file and model_type:
+    if uploaded_file and (model_type or additional_model_type != "None"):
         try:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", width=150)
@@ -80,7 +82,7 @@ def main():
             processed_image, processed_vis = None, None
             if "ReLU" in model_type or "Tanh" in model_type:
                 processed_image, processed_vis = preprocess_for_mlp(image)
-            elif "CNN" in model_type or "ResNet" in model_type:
+            if "CNN" == additional_model_type or "ResNet" == additional_model_type:
                 processed_image, processed_vis = preprocess_for_cnn(image)
 
             if processed_image is None:
@@ -104,6 +106,27 @@ def main():
                     confidence = float(np.max(prediction))
 
                     st.subheader(f"{model_name} Prediction")
+                    st.metric("Predicted Digit", str(pred_digit))
+                    st.metric("Confidence", f"{confidence*100:.2f}%")
+
+                    fig, ax = plt.subplots()
+                    ax.bar(range(10), prediction[0])
+                    ax.set_xticks(range(10))
+                    ax.set_xlabel("Digit")
+                    ax.set_ylabel("Probability")
+                    st.pyplot(fig)
+
+            if additional_model_type != "None":
+                with col2:
+                    model = load_model(additional_model_type)
+                    if model is None:
+                        return
+
+                    prediction = model.predict(processed_image)
+                    pred_digit = int(np.argmax(prediction))
+                    confidence = float(np.max(prediction))
+
+                    st.subheader(f"{additional_model_type} Prediction")
                     st.metric("Predicted Digit", str(pred_digit))
                     st.metric("Confidence", f"{confidence*100:.2f}%")
 
