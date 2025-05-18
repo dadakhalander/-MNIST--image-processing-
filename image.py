@@ -12,7 +12,7 @@ st.set_page_config(page_title="MNIST Digit Classifier (MLP + CNN + ResNet)", lay
 def load_model(model_type):
     try:
         if model_type == "ReLU":
-            return tf.keras.models.load_model('models/best_relu_model.h5')
+            return tf.keras.models.load_model('models/mnist_relu_model.h5')
         elif model_type == "Tanh":
             return tf.keras.models.load_model('models/best_tanh_model.h5')
         elif model_type == "CNN":
